@@ -3,7 +3,16 @@ import pygame
 import sys
 import levels
 import math
+import time
+import spidev
 
+
+def ReadADC(spi, ch):
+    if ((ch > 7) or (ch < 0)):
+       return -1
+    adc = spi.xfer2([1,(8+ch)<<4,0])
+    data = ((adc[1]&3)<<8) + adc[2]
+    return data
 
 def draw_arrow(r, mx, my, clean_arrow):
     arrow_angle = 0
@@ -48,6 +57,10 @@ def OutOfBound(p1, width, height):
     return False
 
 #游戏的初始设置
+spi = spidev.SpiDev()
+spi.open(0, 0)
+spi.max_speed_hz = 1350000
+
 BLACK = 0, 0, 0
 WHITE = 255, 255, 255
 PURPLE = 30, 0, 30
@@ -89,7 +102,15 @@ screen.blit(bg, (0, 0))
 slow = False
 
 while True:
+    value = ReadADC(spi, 0)
+    for pp in p:
+        if pp.isBlack == False:
+            pp.mass = pp.fix_mass * float(value) * 100 / 1024 * 3 + pp.fix_mass * 0.5
     screen.fill(PURPLE)
+    displayvalue = fontObj.render(str(float(value) * 100 / 1024) + '%', False, WHITE)
+    displayrect = displayvalue.get_rect()
+    displayrect.center = (100, 100)
+    screen.blit(displayvalue, displayrect)
     #画箭头以辅助射击
     rocketrect.center = (r.xxPos, r.yyPos)
     for event in pygame.event.get():
